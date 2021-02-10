@@ -213,16 +213,16 @@ class ZipFile(zipfile.ZipFile):
         self._comment = comment
         self._didModify = True
 
-    def write(self, filename, arcname=None, compress_type=None):
+    def write(self, filename, arcname=None, compress_type=None, strict_timestamps=True):
         # TODO: Reflect python's Zipfile.write
         #   - if filename is file, write as file
         #   - if filename is directory, write an empty directory
-        kwargs = {'filename': filename, 'arcname': arcname, 'compress_type': compress_type}
+        kwargs = {'filename': filename, 'arcname': arcname, 'compress_type': compress_type, 'strict_timestamps': strict_timestamps}
         self.paths_to_write.append(kwargs)
 
-    def write_iter(self, arcname, iterable, compress_type=None, buffer_size=None, date_time=None):
+    def write_iter(self, arcname, iterable, compress_type=None, buffer_size=None, date_time=None, strict_timestamps=True):
         """Write the bytes iterable `iterable` to the archive under the name `arcname`."""
-        kwargs = {'arcname': arcname, 'iterable': iterable, 'compress_type': compress_type, 'buffer_size': buffer_size, 'date_time': date_time}
+        kwargs = {'arcname': arcname, 'iterable': iterable, 'compress_type': compress_type, 'buffer_size': buffer_size, 'date_time': date_time, 'strict_timestamps': strict_timestamps}
         self.paths_to_write.append(kwargs)
 
     def writestr(self, arcname, data, compress_type=None, buffer_size=None, date_time=None):
@@ -233,7 +233,7 @@ class ZipFile(zipfile.ZipFile):
             yield data
         return self.write_iter(arcname, _iterable(), compress_type=compress_type, buffer_size=buffer_size, date_time=date_time)
 
-    def __write(self, filename=None, iterable=None, arcname=None, compress_type=None, buffer_size=None, date_time=None):
+    def __write(self, filename=None, iterable=None, arcname=None, compress_type=None, buffer_size=None, date_time=None, strict_timestamps=True):
         """Put the bytes from filename into the archive under the name
         `arcname`."""
         if not self.fp:
@@ -253,6 +253,12 @@ class ZipFile(zipfile.ZipFile):
                 date_time = date_time[0:6]
             if date_time is None:
                 date_time = time.localtime()[0:6]
+
+        if not strict_timestamps and date_time[0] < 1980:
+            date_time = (1980, 1, 1, 0, 0, 0)
+        elif not strict_timestamps and date_time[0] > 2107:
+            date_time = (2107, 12, 31, 23, 59, 59)
+
         # Create ZipInfo instance to store file information
         if arcname is None:
             arcname = filename
